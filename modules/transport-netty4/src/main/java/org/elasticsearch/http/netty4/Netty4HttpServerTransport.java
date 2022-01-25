@@ -497,6 +497,7 @@ public class Netty4HttpServerTransport extends AbstractLifecycleComponent implem
     void dispatchRequest(final RestRequest request, final RestChannel channel) {
         final ThreadContext threadContext = threadPool.getThreadContext();
         try (ThreadContext.StoredContext ignore = threadContext.stashContext()) {
+            //yiming-doc:bulk 转发器转发
             dispatcher.dispatchRequest(request, channel, threadContext);
         }
     }

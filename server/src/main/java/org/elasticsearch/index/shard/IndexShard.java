@@ -695,6 +695,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             Mapping update = operation.parsedDoc().dynamicMappingsUpdate();
             if (update != null) {
                 // wrap this in the outer catch block, as the master might also throw a MapperParsingException when updating the mapping
+                //yiming-doc:bulk 写入
                 onMappingUpdate.accept(update);
             }
         } catch (MapperParsingException | IllegalArgumentException | TypeMissingException e) {
@@ -703,7 +704,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             verifyNotClosed(e);
             throw e;
         }
-
+        //yiming-doc:bulk 调用引擎执行写入操作
         return index(getEngine(), operation);
     }
 
@@ -735,6 +736,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 // don't use index.source().utf8ToString() here source might not be valid UTF-8
                 logger.trace("index [{}][{}] (seq# [{}])",  index.type(), index.id(), index.seqNo());
             }
+            //yiming-doc:bulk 调用引擎执行写入操作
             result = engine.index(index);
         } catch (Exception e) {
             indexingOperationListeners.postIndex(shardId, index, e);

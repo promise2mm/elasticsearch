@@ -734,7 +734,9 @@ public abstract class TransportReplicationAction<
             if (retryIfUnavailable(state, primary)) {
                 return;
             }
+            //yiming-doc:bulk 主分片所在节点å
             final DiscoveryNode node = state.nodes().get(primary.currentNodeId());
+            //yiming-doc:bulk 根据节点id选择执行本地操作或者转发到另一个节点
             if (primary.currentNodeId().equals(state.nodes().getLocalNodeId())) {
                 performLocalAction(state, primary, node, indexMetaData);
             } else {
@@ -830,6 +832,7 @@ public abstract class TransportReplicationAction<
 
         private void performAction(final DiscoveryNode node, final String action, final boolean isPrimaryAction,
                                    final TransportRequest requestToPerform) {
+            //yiming-doc:bulk 写入远程节点（非本地）分片，通过transportService发送请求到目标节点
             transportService.sendRequest(node, action, requestToPerform, transportOptions, new TransportResponseHandler<Response>() {
 
                 @Override
@@ -860,6 +863,7 @@ public abstract class TransportReplicationAction<
                                     node.getId(),
                                     requestToPerform),
                                 exp);
+                            //yiming-doc:bulk 主分片写入场景，若发送了连接异常或目标主分片不可用等异常 - 重试
                             retry(exp);
                         } else {
                             finishAsFailed(exp);
@@ -1186,6 +1190,7 @@ public abstract class TransportReplicationAction<
             final DiscoveryNode node,
             final ActionListener<ReplicationOperation.ReplicaResponse> listener) {
         final ActionListenerResponseHandler<ReplicaResponse> handler = new ActionListenerResponseHandler<>(listener, ReplicaResponse::new);
+        //yiming-doc:bulk 调用transportService将请求转发到指定副本分片
         transportService.sendRequest(node, transportReplicaAction, replicaRequest, transportOptions, handler);
     }
 

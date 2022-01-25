@@ -171,6 +171,7 @@ public class RestController extends AbstractComponent implements HttpServerTrans
             return;
         }
         try {
+            //yiming-doc:bulk
             tryAllHandlers(request, channel, threadContext);
         } catch (Exception e) {
             try {
@@ -330,6 +331,7 @@ public class RestController extends AbstractComponent implements HttpServerTrans
         }
 
         // Loop through all possible handlers, attempting to dispatch the request
+        //yiming-doc:bulk 根据请求header，取到对应的请求handler，从而分发该request
         Iterator<MethodHandlers> allHandlers = getAllHandlers(request);
         for (Iterator<MethodHandlers> it = allHandlers; it.hasNext(); ) {
             final Optional<RestHandler> mHandler = Optional.ofNullable(it.next()).flatMap(mh -> mh.getHandler(request.method()));

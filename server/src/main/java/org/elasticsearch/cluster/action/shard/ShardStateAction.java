@@ -101,6 +101,7 @@ public class ShardStateAction extends AbstractComponent {
             waitForNewMasterAndRetry(actionName, observer, shardEntry, listener, changePredicate);
         } else {
             logger.debug("{} sending [{}] to [{}] for shard entry [{}]", shardEntry.shardId, actionName, masterNode.getId(), shardEntry);
+            //yiming-doc:bulk 执行分片失败上报
             transportService.sendRequest(masterNode,
                 actionName, shardEntry, new EmptyTransportResponseHandler(ThreadPool.Names.SAME) {
                     @Override
@@ -166,6 +167,7 @@ public class ShardStateAction extends AbstractComponent {
     private void shardFailed(final ShardId shardId, String allocationId, long primaryTerm, final String message,
                              @Nullable final Exception failure, Listener listener, ClusterState currentState) {
         ShardEntry shardEntry = new ShardEntry(shardId, allocationId, primaryTerm, message, failure);
+        //yiming-doc:bulk 将异常分分片上报master
         sendShardAction(SHARD_FAILED_ACTION_NAME, currentState, shardEntry, listener);
     }
 

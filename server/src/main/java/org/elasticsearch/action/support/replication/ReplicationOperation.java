@@ -89,6 +89,7 @@ public class ReplicationOperation<
     }
 
     public void execute() throws Exception {
+        //yiming-doc:bulk 收到其他节点transportService发送过来的请求
         final String activeShardCountFailure = checkActiveShardCount();
         final ShardRouting primaryRouting = primary.routingEntry();
         final ShardId primaryId = primaryRouting.shardId();
@@ -100,6 +101,7 @@ public class ReplicationOperation<
 
         totalShards.incrementAndGet();
         pendingActions.incrementAndGet(); // increase by 1 until we finish all primary coordination
+        //yiming-doc:bulk 主分片写入
         primaryResult = primary.perform(request);
         primary.updateLocalCheckpointForShard(primaryRouting.allocationId().getId(), primary.localCheckpoint());
         final ReplicaRequest replicaRequest = primaryResult.replicaRequest();
@@ -118,9 +120,12 @@ public class ReplicationOperation<
             final long globalCheckpoint = primary.globalCheckpoint();
             final ReplicationGroup replicationGroup = primary.getReplicationGroup();
             markUnavailableShardsAsStale(replicaRequest, replicationGroup.getInSyncAllocationIds(), replicationGroup.getRoutingTable());
+            //yiming-doc:bulk 副本分片写入
             performOnReplicas(replicaRequest, globalCheckpoint, replicationGroup.getRoutingTable());
+            // 写完副本 - 再写入灾备集群
         }
-
+        //yiming-doc:bulk 待主、副本分片都执行完毕后，标记成功
+        // 故：写入性能和分片数量有关
         successfulShards.incrementAndGet();  // mark primary as successful
         decPendingAndFinishIfNeeded();
     }
@@ -201,6 +206,7 @@ public class ReplicationOperation<
                     shardReplicaFailures.add(new ReplicationResponse.ShardInfo.Failure(
                         shard.shardId(), shard.currentNodeId(), replicaException, restStatus, false));
                     String message = String.format(Locale.ROOT, "failed to perform %s on replica %s", opType, shard);
+                    //yiming-doc:bulk 副本分片写入失败，降级，向master节点报告移除该副本分片
                     replicasProxy.failShardIfNeeded(shard, message,
                             replicaException, ReplicationOperation.this::decPendingAndFinishIfNeeded,
                             ReplicationOperation.this::onPrimaryDemoted, throwable -> decPendingAndFinishIfNeeded());

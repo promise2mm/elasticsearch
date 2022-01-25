@@ -136,6 +136,7 @@ public abstract class TransportAction<Request extends ActionRequest, Response ex
         }
 
         RequestFilterChain<Request, Response> requestFilterChain = new RequestFilterChain<>(this, logger);
+        //yiming-doc:bulk 执行requestFilterChain
         requestFilterChain.proceed(task, actionName, request, listener);
     }
 
@@ -162,8 +163,11 @@ public abstract class TransportAction<Request extends ActionRequest, Response ex
             int i = index.getAndIncrement();
             try {
                 if (i < this.action.filters.length) {
+                    //yiming-doc:bulk 执行链 插件若定义了相关操作，则会先执行各插件的逻辑
                     this.action.filters[i].apply(task, actionName, request, listener, this);
                 } else if (i == this.action.filters.length) {
+                    //yiming-doc:bulk 如上，i == this.action.filters.length) 代表执行链已全部执行完毕，则执行具体action
+                    //yiming-doc:bulk 对应：TransportBulkAction
                     this.action.doExecute(task, request, listener);
                 } else {
                     listener.onFailure(new IllegalStateException("proceed was called too many times"));

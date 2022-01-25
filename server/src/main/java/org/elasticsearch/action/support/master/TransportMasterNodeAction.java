@@ -164,6 +164,7 @@ public abstract class TransportMasterNodeAction<Request extends MasterNodeReques
                     threadPool.executor(executor).execute(new ActionRunnable(delegate) {
                         @Override
                         protected void doRun() throws Exception {
+                            //yiming-doc:bulk 对主节点执行bulk操作
                             masterOperation(task, request, clusterState, delegate);
                         }
                     });

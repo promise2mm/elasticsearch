@@ -145,16 +145,18 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
         if (needToCheck()) {
             // Attempt to create all the indices that we're going to need during the bulk before we start.
             // Step 1: collect all the indices in the request
+            //yiming-doc:bulk 搜集各个索引
             final Set<String> indices = bulkRequest.requests.stream()
                     // delete requests should not attempt to create the index (if the index does not
                     // exists), unless an external versioning is used
-                .filter(request -> request.opType() != DocWriteRequest.OpType.DELETE 
-                        || request.versionType() == VersionType.EXTERNAL 
+                .filter(request -> request.opType() != DocWriteRequest.OpType.DELETE
+                        || request.versionType() == VersionType.EXTERNAL
                         || request.versionType() == VersionType.EXTERNAL_GTE)
                 .map(DocWriteRequest::index)
                 .collect(Collectors.toSet());
             /* Step 2: filter that to indices that don't exist and we can create. At the same time build a map of indices we can't create
              * that we'll use when we try to run the requests. */
+            //yiming-doc:bulk 获取集群状态（索引列表），不存在的索引先找出来，准备创建
             final Map<String, IndexNotFoundException> indicesThatCannotBeCreated = new HashMap<>();
             Set<String> autoCreateIndices = new HashSet<>();
             ClusterState state = clusterService.state();
@@ -171,11 +173,13 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                 }
             }
             // Step 3: create all the indices that are missing, if there are any missing. start the bulk after all the creates come back.
+            //yiming-doc:bulk 无自动创建的索引，直接执行批量写入
             if (autoCreateIndices.isEmpty()) {
                 executeBulk(task, bulkRequest, startTime, listener, responses, indicesThatCannotBeCreated);
             } else {
                 final AtomicInteger counter = new AtomicInteger(autoCreateIndices.size());
                 for (String index : autoCreateIndices) {
+                    //yiming-doc:bulk 创建索引成功后继续执行bulk操作
                     createIndex(index, bulkRequest.timeout(), new ActionListener<CreateIndexResponse>() {
                         @Override
                         public void onResponse(CreateIndexResponse result) {
@@ -188,6 +192,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                         public void onFailure(Exception e) {
                             if (!(ExceptionsHelper.unwrapCause(e) instanceof ResourceAlreadyExistsException)) {
                                 // fail all requests involving this index, if create didn't work
+                                // 若索引创建失败，则与当前索引相关的写入数据全部置为失败
                                 for (int i = 0; i < bulkRequest.requests.size(); i++) {
                                     DocWriteRequest request = bulkRequest.requests.get(i);
                                     if (request != null && setResponseFailureIfIndexMatches(responses, i, request, index, e)) {
@@ -195,6 +200,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                                     }
                                 }
                             }
+                            // 索引全部创建完成后继续执行bulk
                             if (counter.decrementAndGet() == 0) {
                                 executeBulk(task, bulkRequest, startTime, ActionListener.wrap(listener::onResponse, inner -> {
                                     inner.addSuppressed(e);
@@ -269,12 +275,14 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
 
         @Override
         protected void doRun() throws Exception {
+            //yiming-doc:bulk 具体执行方法
             final ClusterState clusterState = observer.setAndGetObservedState();
             if (handleBlockExceptions(clusterState)) {
                 return;
             }
             final ConcreteIndices concreteIndices = new ConcreteIndices(clusterState, indexNameExpressionResolver);
             MetaData metaData = clusterState.metaData();
+            //yiming-doc:bulk 根据每个请求type, 对每条数据执行对应操作
             for (int i = 0; i < bulkRequest.requests.size(); i++) {
                 DocWriteRequest docWriteRequest = bulkRequest.requests.get(i);
                 //the request can only be null because we set it to null in the previous step, so it gets ignored
@@ -287,6 +295,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                 Index concreteIndex = concreteIndices.resolveIfAbsent(docWriteRequest);
                 try {
                     switch (docWriteRequest.opType()) {
+                        // create和index走同一套逻辑
                         case CREATE:
                         case INDEX:
                             IndexRequest indexRequest = (IndexRequest) docWriteRequest;
@@ -294,9 +303,11 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                             MappingMetaData mappingMd = indexMetaData.mappingOrDefault(indexRequest.type());
                             Version indexCreated = indexMetaData.getCreationVersion();
                             indexRequest.resolveRouting(metaData);
+                            //yiming-doc:bulk _id校验，自动生成
                             indexRequest.process(indexCreated, mappingMd, concreteIndex.getName());
                             break;
                         case UPDATE:
+                            //yiming-doc:bulk
                             TransportUpdateAction.resolveAndValidateRouting(metaData, concreteIndex.getName(), (UpdateRequest) docWriteRequest);
                             break;
                         case DELETE:
@@ -325,6 +336,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                     continue;
                 }
                 String concreteIndex = concreteIndices.getConcreteIndex(request.index()).getName();
+                //yiming-doc:bulk 获取分片id
                 ShardId shardId = clusterService.operationRouting().indexShards(clusterState, concreteIndex, request.id(), request.routing()).shardId();
                 List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(shardId, shard -> new ArrayList<>());
                 shardRequests.add(new BulkItemRequest(i, request));
@@ -347,6 +359,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                 if (task != null) {
                     bulkShardRequest.setParentTask(nodeId, task.getId());
                 }
+                //yiming-doc:bulk 根据分片执行bulk请求
                 shardBulkAction.execute(bulkShardRequest, new ActionListener<BulkShardResponse>() {
                     @Override
                     public void onResponse(BulkShardResponse bulkShardResponse) {

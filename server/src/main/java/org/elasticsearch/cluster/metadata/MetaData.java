@@ -490,6 +490,7 @@ public class MetaData implements Iterable<IndexMetaData>, Diffable<MetaData>, To
         }
         AliasOrIndex.Alias alias = (AliasOrIndex.Alias) result;
         if (result.getIndices().size() > 1) {
+            //yiming-doc:bulk 若一个别名关联了多个实际索引，则提示失败
             rejectSingleIndexOperation(aliasOrIndex, result);
         }
         AliasMetaData aliasMd = alias.getFirstAliasMetaData();

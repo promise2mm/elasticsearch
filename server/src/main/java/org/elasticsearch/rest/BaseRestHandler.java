@@ -77,6 +77,8 @@ public abstract class BaseRestHandler extends AbstractComponent implements RestH
     @Override
     public final void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
         // prepare the request for execution; has the side effect of touching the request parameters
+        //yiming-doc:bulk 根据request找到RestBulkAction
+        //返回consumer: channel -> client.bulk(bulkRequest, new RestStatusToXContentListener<>(channel))
         final RestChannelConsumer action = prepareRequest(request, client);
 
         // validate unconsumed params, but we must exclude params used to format the response
@@ -94,6 +96,7 @@ public abstract class BaseRestHandler extends AbstractComponent implements RestH
 
         usageCount.increment();
         // execute the action
+        //yiming-doc:bulk 执行
         action.accept(channel);
     }
 
