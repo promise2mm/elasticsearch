@@ -1,13 +1,45 @@
 ### Follow these steps, you will make it.
+- Gradle
+  - choose the right version of gradle and java version
+  - setting repository mirror(`$GRADLE_HOME/init.d/init.gradle`)
+  ```shell
+    allprojects{
+        repositories {
+            def ALIYUN_REPOSITORY_URL = 'https://maven.aliyun.com/repository/public/'
+            def ALIYUN_GRADLE_PLUGIN_URL = 'https://maven.aliyun.com/repository/gradle-plugin/'
+            all { ArtifactRepository repo ->
+                if(repo instanceof MavenArtifactRepository){
+                    def url = repo.url.toString()
+                    if (url.startsWith('https://repo1.maven.org/maven2/')) {
+                        project.logger.lifecycle "Repository ${repo.url} replaced by $ALIYUN_REPOSITORY_URL."
+                        remove repo
+                    }
+                    if (url.startsWith('https://jcenter.bintray.com/')) {
+                        project.logger.lifecycle "Repository ${repo.url} replaced by $ALIYUN_REPOSITORY_URL."
+                        remove repo
+                    }
+                    if (url.startsWith('https://plugins.gradle.org/m2/')) {
+                        project.logger.lifecycle "Repository ${repo.url} replaced by $ALIYUN_GRADLE_PLUGIN_URL."
+                        remove repo
+                    }
+                }
+            }
+            maven { url ALIYUN_REPOSITORY_URL }
+            maven { url ALIYUN_GRADLE_PLUGIN_URL }
+        }
+  } 
+  ```
 - VM Options
 ```shell
--Des.path.conf=/Users/andyni/dev/projects/andy/es_home/config
--Des.path.home=/Users/andyni/dev/projects/andy/es_home
+-Des.path.conf=/Users/andyni/dev/elasticsearch-6.2.3/elasticsearch-6.2.3-single/config
+-Des.path.home=/Users/andyni/dev/elasticsearch-6.2.3/elasticsearch-6.2.3-single
 -Dlog4j2.disable.jmx=true
--Djava.security.policy=/Users/andyni/dev/projects/andy/es_home/config/java.policy
+-Didea.no.launcher=true
+-Djava.security.policy=/Library/Java/JavaVirtualMachines/jdk-9.0.4.jdk/Contents/Home/conf/security/java.policy
 ```
 
 - Add java.policy file in config directory
+  - (or your system java security config file: `/Library/Java/JavaVirtualMachines/jdk-9.0.4.jdk/Contents/Home/conf/security/java.policy`)
 ```shell
 grant {
     permission java.lang.RuntimePermission "createClassLoader";
